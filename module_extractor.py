@@ -28,6 +28,32 @@ class PhysicsContentExtractor:
             
         print("\n[*] Tải lên và xử lý hoàn tất!")
         return uploaded_file
+    
+    def create_chat_session(self, pdf_path: str):
+            """Khởi tạo một phiên chat liên tục với tài liệu đính kèm."""
+            if not os.path.exists(pdf_path):
+                raise ValueError(f"Không tìm thấy file: {pdf_path}")
+
+            # 1. Upload file
+            uploaded_file = self._upload_and_wait(pdf_path)
+            
+            # 2. Khởi tạo đối tượng Chat (Bộ nhớ của Agent)
+            chat_session = self.client.chats.create(model=self.model_id)
+            
+            system_prompt = """
+            Bạn là một trợ lý học thuật chuyên nghiệp môn Vật Lý.
+            Dựa vào tài liệu bài giảng đính kèm, hãy tóm tắt kiến thức, liệt kê công thức và giải chi tiết bài tập.
+            QUY TẮC ĐỊNH DẠNG BẮT BUỘC:
+            - Bọc công thức inline trong một dấu đô-la: $v = 10 m/s$.
+            - Bọc công thức độc lập trong hai dấu đô-la: $$F = ma$$.
+            """
+            
+            # 3. Kích hoạt câu lệnh đầu tiên để Agent bắt đầu phân tích file
+            print("[*] Đang khởi tạo bộ nhớ và sinh báo cáo lần đầu...")
+            initial_response = chat_session.send_message([system_prompt, uploaded_file, "Hãy phân tích tài liệu này theo đúng yêu cầu."])
+            
+            # Trả về cả đối tượng chat (để chat tiếp) và câu trả lời đầu tiên (để hiển thị)
+            return chat_session, initial_response.text
 
     def extract(self, pdf_path: str):
         """Hàm chính: Sinh nội dung từ tài liệu đa phương thức."""
