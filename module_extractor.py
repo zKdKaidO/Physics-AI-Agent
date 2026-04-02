@@ -41,31 +41,6 @@ class PhysicsContentExtractor:
             chat_session = self.client.chats.create(model=self.model_id)
             
             system_prompt = """
-            Bạn là một trợ lý học thuật chuyên nghiệp môn Vật Lý.
-            Dựa vào tài liệu bài giảng đính kèm, hãy tóm tắt kiến thức, liệt kê công thức và giải chi tiết bài tập.
-            QUY TẮC ĐỊNH DẠNG BẮT BUỘC:
-            - Bọc công thức inline trong một dấu đô-la: $v = 10 m/s$.
-            - Bọc công thức độc lập trong hai dấu đô-la: $$F = ma$$.
-            """
-            
-            # 3. Kích hoạt câu lệnh đầu tiên để Agent bắt đầu phân tích file
-            print("[*] Đang khởi tạo bộ nhớ và sinh báo cáo lần đầu...")
-            initial_response = chat_session.send_message([system_prompt, uploaded_file, "Hãy phân tích tài liệu này theo đúng yêu cầu."])
-            
-            # Trả về cả đối tượng chat (để chat tiếp) và câu trả lời đầu tiên (để hiển thị)
-            return chat_session, initial_response.text
-
-    def extract(self, pdf_path: str):
-        """Hàm chính: Sinh nội dung từ tài liệu đa phương thức."""
-        if not os.path.exists(pdf_path):
-            print(f"[!] Không tìm thấy file: {pdf_path}")
-            return None
-
-        uploaded_file = None
-        try:
-            uploaded_file = self._upload_and_wait(pdf_path)
-            
-            system_prompt = """
             Bạn là một trợ lý học thuật chuyên nghiệp môn Vật Lý, có kiến thức sâu rộng và khả năng giảng giải đa chiều.
             Nhiệm vụ:
             1. PHẦN KIẾN THỨC:
@@ -92,27 +67,12 @@ class PhysicsContentExtractor:
 
             """
             
-            print("[*] Đang suy luận và biên soạn nội dung... (Có thể mất 10-30s)")
+            # 3. Kích hoạt câu lệnh đầu tiên để Agent bắt đầu phân tích file
+            print("[*] Đang khởi tạo bộ nhớ và sinh báo cáo lần đầu...")
+            initial_response = chat_session.send_message([system_prompt, uploaded_file, "Hãy phân tích tài liệu này theo đúng yêu cầu."])
             
-            # Cấu trúc gọi API mới
-            response = self.client.models.generate_content(
-                model=self.model_id,
-                contents=[uploaded_file, system_prompt]
-            )
-            return response.text
-            
-        except Exception as e:
-            print(f"[!] Đã xảy ra lỗi trong quá trình xử lý: {e}")
-            return None
-            
-        finally:
-            # Xóa file an toàn
-            if uploaded_file:
-                try:
-                    self.client.files.delete(name=uploaded_file.name)
-                    print(f"[*] Đã dọn dẹp file tạm trên cloud.")
-                except Exception as cleanup_error:
-                    print(f"[!] Không thể xóa file tạm: {cleanup_error}")
+            # Trả về cả đối tượng chat (để chat tiếp) và câu trả lời đầu tiên (để hiển thị)
+            return chat_session, initial_response.text
 
 # ================= CÁCH SỬ DỤNG VỚI CLI =================
 if __name__ == "__main__":
