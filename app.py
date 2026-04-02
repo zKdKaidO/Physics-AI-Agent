@@ -2,57 +2,74 @@ import streamlit as st
 import os
 import tempfile
 from dotenv import load_dotenv
-# Import Class lõi mà bạn đã dọn dẹp và chạy thành công
 from module_extractor import PhysicsContentExtractor 
 
-# 1. Cấu hình giao diện Web
 st.set_page_config(page_title="AI Physics Agent", page_icon="⚛️", layout="wide")
 st.title("⚛️ AI Agent: Trợ lý Giảng dạy Vật Lý")
-st.markdown("""
-Hệ thống xử lý tài liệu đa phương thức. Hãy tải lên Slide bài giảng hoặc Đề thi Vật lý (định dạng PDF). 
-Agent sẽ tự động tóm tắt lý thuyết, liệt kê công thức và giải chi tiết các câu hỏi.
-""")
 
-# 2. Tải API Key
 load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
 
 if not api_key:
-    st.error("⚠️ Hệ thống chưa được kết nối! Vui lòng kiểm tra file .env")
-    st.stop() # Dừng vẽ UI nếu không có Key
+    st.error("⚠️ LỖI: Chưa có API Key.")
+    st.stop()
 
-# 3. Khu vực Upload File
-uploaded_file = st.file_uploader("Kéo thả file PDF vào đây", type=["pdf"])
+# ================= QUẢN LÝ BỘ NHỚ (STATE) =================
+# Khởi tạo các biến nhớ để không bị mất khi web reload
+if "chat_session" not in st.session_state:
+    st.session_state.chat_session = None
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-# 4. Xử lý Logic khi người dùng bấm nút
-if uploaded_file is not None:
-    if st.button("🚀 Bắt đầu trích xuất nội dung", type="primary"):
-        
-        # Streamlit lưu file trên RAM (bytes). Class của chúng ta cần đường dẫn vật lý (path).
-        # Do đó, ta phải lưu tạm file này xuống ổ cứng.
+# ================= SIDEBAR: KHU VỰC TẢI TÀI LIỆU =================
+with st.sidebar:
+    st.header("1. Nạp Tài Liệu")
+    uploaded_file = st.file_uploader("Tải Slide/Đề thi (PDF)", type=["pdf"])
+    
+    if uploaded_file and st.button("Bắt đầu phiên học", type="primary"):
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
             tmp_file.write(uploaded_file.getvalue())
             tmp_path = tmp_file.name
 
-        # Hiển thị vòng xoay chờ đợi
-        with st.spinner("Agent đang đọc tài liệu và suy luận... (10-30s)"):
+        with st.spinner("Agent đang đọc tài liệu..."):
             try:
-                # Khởi tạo bộ não AI và truyền file vào
+                # Gọi hàm mới để lấy đối tượng chat
                 extractor = PhysicsContentExtractor(api_key=api_key)
-                result = extractor.extract(tmp_path)
+                chat_obj, first_reply = extractor.create_chat_session(tmp_path)
                 
-                if result:
-                    st.success("✅ Trích xuất thành công!")
-                    # Hiển thị kết quả dưới dạng Markdown đẹp mắt
-                    st.markdown("---")
-                    st.markdown(result)
-                else:
-                    st.warning("⚠️ Agent không thể trả về kết quả.")
-                    
+                # LƯU VÀO BỘ NHỚ RAM CỦA WEB
+                st.session_state.chat_session = chat_obj
+                st.session_state.messages = [{"role": "assistant", "content": first_reply}]
+                
+                st.success("✅ Đã kết nối trí nhớ thành công!")
             except Exception as e:
-                st.error(f"❌ Có lỗi hệ thống: {e}")
-                
+                st.error(f"❌ Lỗi: {e}")
             finally:
-                # Dọn dẹp rác: Xóa file tạm trên máy tính sau khi xử lý xong
                 if os.path.exists(tmp_path):
                     os.remove(tmp_path)
+
+# ================= KHU VỰC CHAT CHÍNH =================
+# 1. Vẽ lại toàn bộ lịch sử chat cũ
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
+
+# 2. Ô nhập liệu cho câu hỏi mới
+if st.session_state.chat_session is not None:
+    user_query = st.chat_input("VD: Giải thích lại bản chất của gia tốc trong bài 2...")
+    
+    if user_query:
+        # Hiển thị câu hỏi của người dùng
+        st.session_state.messages.append({"role": "user", "content": user_query})
+        with st.chat_message("user"):
+            st.markdown(user_query)
+        
+        # Gửi câu hỏi vào Agent và chờ phản hồi
+        with st.chat_message("assistant"):
+            with st.spinner("Đang suy luận..."):
+                response = st.session_state.chat_session.send_message(user_query)
+                st.markdown(response.text)
+                # Lưu câu trả lời vào bộ nhớ
+                st.session_state.messages.append({"role": "assistant", "content": response.text})
+else:
+    st.info("👈 Vui lòng tải tài liệu ở cột bên trái để bắt đầu trò chuyện.")
