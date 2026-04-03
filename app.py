@@ -98,7 +98,7 @@ with st.sidebar:
                         os.remove(tmp_path)
 
 # ================= MAIN AREA: HỘI THOẠI (Giống không gian giữa NotebookLM) =================
-st.title("Ho Chi Minh Ideology on the Party and the State") # Bạn có thể đổi thành tên bài học
+st.title("⚛️ Physics Teaching Assistant") # Bạn có thể đổi thành tên bài học
 st.caption("Dựa trên nguồn dữ liệu bạn cung cấp, hãy đặt câu hỏi để khám phá nội dung.")
 
 # Hiển thị lịch sử chat
