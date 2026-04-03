@@ -61,6 +61,9 @@ st.markdown(custom_css, unsafe_allow_html=True)
 load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
 
+if "extractor" not in st.session_state:
+    # Giữ cổng kết nối sống sót vĩnh viễn
+    st.session_state.extractor = PhysicsContentExtractor(api_key=api_key)
 if "chat_session" not in st.session_state:
     st.session_state.chat_session = None
 if "messages" not in st.session_state:
@@ -82,8 +85,8 @@ with st.sidebar:
 
             with st.spinner("Đang đọc nguồn dữ liệu..."):
                 try:
-                    extractor = PhysicsContentExtractor(api_key=api_key)
-                    chat_obj, first_reply = extractor.create_chat_session(tmp_path)
+                    # SỬ DỤNG EXTRACTOR TỪ SESSION_STATE, KHÔNG TẠO MỚI
+                    chat_obj, first_reply = st.session_state.extractor.create_chat_session(tmp_path)
                     
                     st.session_state.chat_session = chat_obj
                     st.session_state.messages = [{"role": "assistant", "content": first_reply}]
